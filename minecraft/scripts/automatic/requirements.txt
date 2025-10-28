@@ -1,0 +1,19 @@
+# Minecraft 1.21.1 Fabric Mods
+# 格式: mod名称 | 项目slug | 版本号(可选)
+
+# Fabric API (必需)
+fabric-api | fabric-api | 0.100.3+1.21.1
+
+# 锂 (Lithium) - 性能优化
+lithium | lithium | 0.12.2+1.21.1
+
+# 磷 (Phosphor) - 光照优化  
+phosphor | phosphor | 0.8.2+1.21.1
+
+# 钠 (Sodium) - 渲染优化
+sodium | sodium | 0.5.11+1.21.1
+
+# Iris Shaders - 着色器支持
+iris | iris | 1.7.2+1.21.1
+
+# 注意：版本号可以不写，会自动下载最新版本
