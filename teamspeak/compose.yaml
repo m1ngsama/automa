@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  teamspeak:
+    image: teamspeak:latest
+    container_name: teamspeak-server
+    ports:
+      - "9987:9987/udp" # 语音服务器端口
+      - "10011:10011" # 文件传输
+      - "10022:10022" # ServerQuery (SSH)
+      - "10080:10080" # 文件传输
+      - "10443:10443" # TS3服务器主要端口
+      - "30033:30033" # 文件传输
+      - "41144:41144" # TSDNS
+    environment:
+      - TS3SERVER_LICENSE=accept
+      - TS3SERVER_SERVERADMIN_PASSWORD=${TS3_ADMIN_PASSWORD:-password123}
+    restart: unless-stopped
+    volumes:
+      - teamspeak_data:/var/ts3server/
+    networks:
+      - teamspeak-network
+
+volumes:
+  teamspeak_data:
+
+networks:
+  teamspeak-network:
+    driver: bridge
