@@ -1,0 +1,17 @@
+[
+  // whitelist.json 文件：白名单玩家列表（JSON 数组）。
+  // 每个对象包含 uuid 和 name。
+  // 原文件中的具体玩家信息已移除，改为示例占位符。
+  // 用户需自行添加真实 UUID（从 mcuuid.net 等工具获取）和玩家名。
+  // 如果不启用白名单，此文件可选。
+  // 示例：
+  {
+    "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "name": "example_player1"
+  },
+  {
+    "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "name": "example_player2"
+  }
+  // 添加更多玩家时，复制以上格式，最后一个对象后无逗号。
+]

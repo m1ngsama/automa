@@ -1,0 +1,36 @@
+# mods.txt 文件：用于 Modrinth 自动下载模组的 slugs 列表。
+# 每行一个 slug（从 Modrinth 网站获取），镜像会自动下载最新 1.21.1 兼容版本。
+# 如果您有现有 jar 文件，优先挂载 mods/ 目录；否则启用此文件。
+# 基于原 mods 列表推断，聚焦性能、兼容和实用模组。
+
+# 核心 API 和加载器
+fabric-api
+
+# 性能优化模组（减少延迟、提升 TPS）
+sodium
+iris
+lithium
+krypton
+architectury
+
+# 地毯模组（调试和服务器优化）
+carpet
+carpet-extra
+
+# 版本兼容模组（允许旧版客户端连接）
+viafabric
+viaversion
+viabackwards
+
+# 地图模组（小地图和世界地图）
+xaeros-minimap
+xaeros-world-map
+
+# 其他实用模组（地图渲染、备份、认证等）
+bluemap
+ftbbackups2
+easyauth
+no-chat-reports
+polylib
+energy
+minimotd  # 假设为 minimotd 的 slug，请在 Modrinth 确认

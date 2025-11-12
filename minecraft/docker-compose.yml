@@ -1,0 +1,66 @@
+# docker-compose.yml 文件：Docker Compose 配置，用于启动 Minecraft Fabric 服务器容器。
+# 版本：3.8（兼容大多数 Docker 版本）。
+# 此文件已去敏，所有敏感数据移到 .env 或 configs 中。
+# 运行命令：docker compose up -d（后台启动）。
+
+version: "3.8"
+
+services:
+  minecraft: # 服务名称（可自定义）
+    image: itzg/minecraft-server:latest # 使用镜像：itzg/minecraft-server（支持 Fabric 和自动模组管理）
+    container_name: mc-fabric-1.21.1 # 容器名称（便于 docker ps 查看）
+    ports:
+      - "25565:25565/tcp" # Minecraft 主端口（TCP，客户端连接）
+      - "25565:25565/udp" # 查询端口（UDP，服务器列表查询）
+      - "25575:25575/tcp" # RCON 端口（TCP，远程控制，与 server.properties 一致）
+    environment: # 环境变量：用于动态配置服务器参数
+      UID: "${UID}" # 从 .env 加载主机用户 UID（避免权限问题）
+      GID: "${GID}" # 从 .env 加载主机用户 GID
+      EULA: "TRUE" # 同意 Minecraft EULA（必须为 TRUE，否则启动失败）
+      TYPE: "FABRIC" # 服务器类型：FABRIC（支持模组加载器）
+      VERSION: "1.21.1" # Minecraft 版本（固定为 1.21.1）
+      FABRIC_VERSION: "latest" # Fabric 加载器版本（latest 为自动最新）
+      MEMORY: "4G" # 最大内存分配（4G 为示例，根据主机 RAM 调整；模组多建议 4G+）
+      INIT_MEMORY: "2G" # 初始内存分配（2G 为示例）
+
+      # 服务器核心设置（可覆盖 server.properties 中的值）
+      ONLINE_MODE: "false" # 正版验证（false 允许非正版客户端；生产环境建议 true 以防安全风险）
+      ENABLE_RCON: "true" # 启用 RCON（true，与 .env 密码结合）
+      RCON_PASSWORD: "${RCON_PASSWORD}" # RCON 密码（从 .env 加载，用户自行设置）
+      RCON_PORT: 25575 # RCON 端口（与 server.properties 一致）
+      DIFFICULTY: "normal" # 难度（normal 为默认）
+      GAMEMODE: "survival" # 游戏模式（survival 为生存）
+      MAX_PLAYERS: 20 # 最大玩家数（改为通用示例，原为特定值；根据资源调整）
+      MOTD: "A Minecraft Server" # 欢迎消息（改为通用示例，支持颜色代码）
+      VIEW_DISTANCE: 10 # 视图距离（10 为平衡性能）
+      SIMULATION_DISTANCE: 10 # 模拟距离（10 为平衡）
+      SPAWN_PROTECTION: 16 # 生成保护（16 为默认）
+      PVP: "true" # 启用 PVP（true）
+      WHITE_LIST: "false" # 启用白名单（false；如需启用，设为 true 并配置 whitelist.json）
+      ENFORCE_WHITELIST: "false" # 强制白名单（false）
+
+      # 其他优化设置
+      TZ: "${TZ}" # 时区（从 .env 加载）
+      REMOVE_OLD_MODS: "true" # 自动移除旧模组（true，保持 mods 干净）
+
+      # 可选：模组自动下载（如果不挂载 mods/ 目录，取消注释启用）
+      # MODRINTH_PROJECTS: "@/extras/mods.txt"  # 从 mods.txt 加载 Modrinth slugs
+      # MODRINTH_DOWNLOAD_DEPENDENCIES: "required"  # 只下载必需依赖
+    volumes: # 卷挂载：持久化数据和自定义文件
+      - ./data:/data # 持久化世界、backups、logs 等（重要，防止数据丢失）
+      - ./mods:/data/mods # 挂载用户 mods jar（从原服务器复制）
+      - ./configs/server.properties:/data/server.properties:ro # 挂载自定义 server.properties（ro 为只读，防止容器修改）
+      - ./configs/whitelist.json:/data/whitelist.json:ro # 挂载自定义白名单
+      - ./configs/ops.json:/data/ops.json:ro # 挂载自定义 OP
+      # 可选：挂载其他目录（根据需要取消注释）
+      # - ./data/backups:/data/backups  # 备份目录
+      # - ./configs/EasyAuth:/data/EasyAuth:ro  # EasyAuth 配置（如果有）
+      # - ./extras:/extras:ro  # mods.txt 目录（如果启用自动下载）
+    restart: unless-stopped # 重启策略：除非手动停止，否则自动重启（提升可用性）
+    stdin_open: true # 启用 stdin（便于 attach 容器）
+    tty: true # 启用 tty（便于交互调试）
+    logging: # 日志配置（防止日志文件过大）
+      driver: "json-file" # 日志驱动（json-file 为 Docker 默认）
+      options:
+        max-size: "10m" # 单个日志文件最大大小（10m 为示例）
+        max-file: "3" # 最大日志文件数（3 个轮换）
