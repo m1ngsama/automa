@@ -1,0 +1,43 @@
+# Environment files with secrets
+.env
+*.env
+!.env.example
+
+# Docker volumes and data
+**/data/
+**/volumes/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Backups
+*.tar.gz
+*.zip
+backups/
+**/backups/
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Minecraft specific
+minecraft/world/
+minecraft/world_*/
+minecraft/server.jar
+minecraft/libraries/
+minecraft/.fabric/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
