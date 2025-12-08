@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Download Minecraft mods from Modrinth
+# Uses requirements.txt to specify mods
 
 # 加载日志模块
 source "$(dirname "$0")/logger.sh"

@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Minecraft server automated deployment
+# Deploys mods and configuration to server directory
 
 # 加载日志模块
 source "$(dirname "$0")/logger.sh"

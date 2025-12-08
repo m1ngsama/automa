@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Logger utility for Minecraft automation scripts
+# Provides consistent logging across all scripts
 
 LOG_FILE="./logs/mod-install-log.txt"
 mkdir -p "$(dirname "$LOG_FILE")"
