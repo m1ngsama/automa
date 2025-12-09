@@ -16,10 +16,19 @@ help:
 	@echo "  all-down   Stop all services"
 	@echo ""
 	@echo "Service-specific Commands:"
-	@echo "  minecraft-up      Start Minecraft server"
-	@echo "  minecraft-down    Stop Minecraft server"
-	@echo "  minecraft-logs    View Minecraft logs"
-	@echo "  minecraft-restart Restart Minecraft server"
+	@echo "  Minecraft:"
+	@echo "    minecraft-up              Start Minecraft server"
+	@echo "    minecraft-down            Stop Minecraft server"
+	@echo "    minecraft-logs            View Minecraft logs"
+	@echo "    minecraft-restart         Restart Minecraft server"
+	@echo "    minecraft-status          Show server status"
+	@echo "    minecraft-setup           Initialize environment"
+	@echo "    minecraft-mods-download   Download mods from Modrinth"
+	@echo "    minecraft-mods-list       List installed mods"
+	@echo "    minecraft-mods-update     Update all mods"
+	@echo "    minecraft-backup          Create full backup"
+	@echo "    minecraft-backup-world    Backup world data only"
+	@echo "    minecraft-backup-list     List available backups"
 	@echo ""
 	@echo "  teamspeak-up      Start TeamSpeak server"
 	@echo "  teamspeak-down    Stop TeamSpeak server"
@@ -86,6 +95,36 @@ minecraft-logs:
 minecraft-restart:
 	@cd minecraft && docker compose restart
 	@echo "✓ Minecraft server restarted"
+
+minecraft-status:
+	@cd minecraft && ./scripts/monitor.sh status
+
+minecraft-setup:
+	@cd minecraft && ./scripts/setup.sh
+
+minecraft-mods-download:
+	@cd minecraft && ./scripts/mod-manager.sh download
+
+minecraft-mods-list:
+	@cd minecraft && ./scripts/mod-manager.sh list
+
+minecraft-mods-update:
+	@cd minecraft && ./scripts/mod-manager.sh update
+
+minecraft-mods-check:
+	@cd minecraft && ./scripts/mod-manager.sh check
+
+minecraft-backup:
+	@cd minecraft && ./scripts/backup.sh backup all
+
+minecraft-backup-world:
+	@cd minecraft && ./scripts/backup.sh backup world
+
+minecraft-backup-list:
+	@cd minecraft && ./scripts/backup.sh list
+
+minecraft-backup-cleanup:
+	@cd minecraft && ./scripts/backup.sh cleanup
 
 # TeamSpeak
 teamspeak-up:
