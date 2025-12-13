@@ -4,42 +4,9 @@
 
 set -euo pipefail
 
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
-
-check_container_health() {
-  local container_name="$1"
-
-  if ! docker ps --filter "name=$container_name" --format '{{.Names}}' | grep -q "$container_name"; then
-    return 1
-  fi
-
-  local status
-  status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null)
-
-  if [[ "$status" == "running" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-check_port() {
-  local host="${1:-localhost}"
-  local port="$2"
-
-  if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-    return 0
-  else
-    return 1
-  fi
-}
+# Source shared library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
 
 check_minecraft() {
   log_info "Checking Minecraft server..."

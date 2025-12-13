@@ -4,28 +4,18 @@
 
 set -euo pipefail
 
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly NC='\033[0m'
+# Source shared library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
 
 readonly BACKUP_ROOT="${BACKUP_ROOT:-./backups}"
 readonly TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
-
-ensure_backup_dir() {
-  local dir="$1"
-  mkdir -p "$dir"
-}
 
 backup_minecraft() {
   log_info "Backing up Minecraft server..."
 
   local backup_dir="$BACKUP_ROOT/minecraft/$TIMESTAMP"
-  ensure_backup_dir "$backup_dir"
+  ensure_dir "$backup_dir"
 
   # Backup world data
   if [[ -d "minecraft/data" ]]; then
@@ -62,7 +52,7 @@ backup_teamspeak() {
   log_info "Backing up TeamSpeak server..."
 
   local backup_dir="$BACKUP_ROOT/teamspeak/$TIMESTAMP"
-  ensure_backup_dir "$backup_dir"
+  ensure_dir "$backup_dir"
 
   # Export Docker volume
   if docker volume ls | grep -q teamspeak_data; then
@@ -82,7 +72,7 @@ backup_nextcloud() {
   log_info "Backing up Nextcloud..."
 
   local backup_dir="$BACKUP_ROOT/nextcloud/$TIMESTAMP"
-  ensure_backup_dir "$backup_dir"
+  ensure_dir "$backup_dir"
 
   # Backup database
   log_info "  Backing up database..."
