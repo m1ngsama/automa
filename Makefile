@@ -2,6 +2,8 @@
 # Provides common operations across all services
 
 .PHONY: help all status up down logs restart clean minecraft teamspeak nextcloud
+.PHONY: health health-minecraft health-teamspeak health-nextcloud
+.PHONY: backup backup-minecraft backup-teamspeak backup-nextcloud backup-list backup-cleanup
 
 # Default target
 help:
@@ -10,10 +12,14 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Global Commands:"
-	@echo "  help       Show this help message"
-	@echo "  status     Show status of all services"
-	@echo "  all-up     Start all services"
-	@echo "  all-down   Stop all services"
+	@echo "  help           Show this help message"
+	@echo "  status         Show status of all services"
+	@echo "  all-up         Start all services"
+	@echo "  all-down       Stop all services"
+	@echo "  health         Run health checks on all services"
+	@echo "  backup         Backup all services"
+	@echo "  backup-list    List available backups"
+	@echo "  backup-cleanup Remove old backups"
 	@echo ""
 	@echo "Service-specific Commands:"
 	@echo "  Minecraft:"
@@ -29,16 +35,21 @@ help:
 	@echo "    minecraft-backup          Create full backup"
 	@echo "    minecraft-backup-world    Backup world data only"
 	@echo "    minecraft-backup-list     List available backups"
+	@echo "    health-minecraft          Check Minecraft health"
 	@echo ""
-	@echo "  teamspeak-up      Start TeamSpeak server"
-	@echo "  teamspeak-down    Stop TeamSpeak server"
-	@echo "  teamspeak-logs    View TeamSpeak logs"
-	@echo "  teamspeak-restart Restart TeamSpeak server"
+	@echo "  TeamSpeak:"
+	@echo "    teamspeak-up              Start TeamSpeak server"
+	@echo "    teamspeak-down            Stop TeamSpeak server"
+	@echo "    teamspeak-logs            View TeamSpeak logs"
+	@echo "    teamspeak-restart         Restart TeamSpeak server"
+	@echo "    health-teamspeak          Check TeamSpeak health"
 	@echo ""
-	@echo "  nextcloud-up      Start Nextcloud"
-	@echo "  nextcloud-down    Stop Nextcloud"
-	@echo "  nextcloud-logs    View Nextcloud logs"
-	@echo "  nextcloud-restart Restart Nextcloud"
+	@echo "  Nextcloud:"
+	@echo "    nextcloud-up              Start Nextcloud"
+	@echo "    nextcloud-down            Stop Nextcloud"
+	@echo "    nextcloud-logs            View Nextcloud logs"
+	@echo "    nextcloud-restart         Restart Nextcloud"
+	@echo "    health-nextcloud          Check Nextcloud health"
 	@echo ""
 	@echo "Utility Commands:"
 	@echo "  check      Check prerequisites"
@@ -164,3 +175,39 @@ clean:
 	@docker container prune -f
 	@docker volume prune -f
 	@echo "✓ Cleanup complete"
+
+# ============================================================================
+# Health Check Targets
+# ============================================================================
+health:
+	@./bin/healthcheck.sh all
+
+health-minecraft:
+	@./bin/healthcheck.sh minecraft
+
+health-teamspeak:
+	@./bin/healthcheck.sh teamspeak
+
+health-nextcloud:
+	@./bin/healthcheck.sh nextcloud
+
+# ============================================================================
+# Backup Targets (using bin/backup.sh)
+# ============================================================================
+backup:
+	@./bin/backup.sh backup all
+
+backup-minecraft:
+	@./bin/backup.sh backup minecraft
+
+backup-teamspeak:
+	@./bin/backup.sh backup teamspeak
+
+backup-nextcloud:
+	@./bin/backup.sh backup nextcloud
+
+backup-list:
+	@./bin/backup.sh list
+
+backup-cleanup:
+	@./bin/backup.sh cleanup
