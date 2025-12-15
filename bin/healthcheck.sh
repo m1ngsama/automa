@@ -4,109 +4,78 @@
 
 set -euo pipefail
 
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
-
-check_container_health() {
-  local container_name="$1"
-
-  if ! docker ps --filter "name=$container_name" --format '{{.Names}}' | grep -q "$container_name"; then
-    return 1
-  fi
-
-  local status
-  status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null)
-
-  if [[ "$status" == "running" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-check_port() {
-  local host="${1:-localhost}"
-  local port="$2"
-
-  if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-    return 0
-  else
-    return 1
-  fi
-}
+# Source shared library and config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/lib/common.sh"
+source "$PROJECT_ROOT/config.sh"
 
 check_minecraft() {
   log_info "Checking Minecraft server..."
 
-  if check_container_health "mc-fabric-1.21.1"; then
+  if check_container_health "$CONTAINER_MINECRAFT"; then
     log_info "  ✓ Container is running"
   else
     log_error "  ✗ Container is not running"
     return 1
   fi
 
-  if check_port "localhost" 25565; then
-    log_info "  ✓ Server port 25565 is accessible"
+  if check_port "localhost" "$PORT_MINECRAFT"; then
+    log_info "  ✓ Server port $PORT_MINECRAFT is accessible"
   else
-    log_warn "  ⚠ Server port 25565 is not accessible"
+    log_warn "  ⚠ Server port $PORT_MINECRAFT is not accessible"
   fi
 
-  if check_port "localhost" 25575; then
-    log_info "  ✓ RCON port 25575 is accessible"
+  if check_port "localhost" "$PORT_MINECRAFT_RCON"; then
+    log_info "  ✓ RCON port $PORT_MINECRAFT_RCON is accessible"
   else
-    log_warn "  ⚠ RCON port 25575 is not accessible"
+    log_warn "  ⚠ RCON port $PORT_MINECRAFT_RCON is not accessible"
   fi
 }
 
 check_teamspeak() {
   log_info "Checking TeamSpeak server..."
 
-  if check_container_health "teamspeak-server"; then
+  if check_container_health "$CONTAINER_TEAMSPEAK"; then
     log_info "  ✓ Container is running"
   else
     log_error "  ✗ Container is not running"
     return 1
   fi
 
-  if check_port "localhost" 10011; then
-    log_info "  ✓ File transfer port 10011 is accessible"
+  if check_port "localhost" "$PORT_TEAMSPEAK_QUERY"; then
+    log_info "  ✓ Query port $PORT_TEAMSPEAK_QUERY is accessible"
   else
-    log_warn "  ⚠ Port 10011 is not accessible"
+    log_warn "  ⚠ Port $PORT_TEAMSPEAK_QUERY is not accessible"
   fi
 }
 
 check_nextcloud() {
   log_info "Checking Nextcloud..."
 
-  if check_container_health "nextcloud"; then
+  if check_container_health "$CONTAINER_NEXTCLOUD"; then
     log_info "  ✓ Nextcloud container is running"
   else
     log_error "  ✗ Nextcloud container is not running"
     return 1
   fi
 
-  if check_container_health "nextcloud-db"; then
+  if check_container_health "$CONTAINER_NEXTCLOUD_DB"; then
     log_info "  ✓ Database container is running"
   else
     log_error "  ✗ Database container is not running"
   fi
 
-  if check_container_health "nextcloud-redis"; then
+  if check_container_health "$CONTAINER_NEXTCLOUD_REDIS"; then
     log_info "  ✓ Redis container is running"
   else
     log_warn "  ⚠ Redis container is not running"
   fi
 
-  if check_port "localhost" 8080; then
-    log_info "  ✓ Web interface port 8080 is accessible"
+  if check_port "localhost" "$PORT_NEXTCLOUD_WEB"; then
+    log_info "  ✓ Web interface port $PORT_NEXTCLOUD_WEB is accessible"
   else
-    log_warn "  ⚠ Port 8080 is not accessible"
+    log_warn "  ⚠ Port $PORT_NEXTCLOUD_WEB is not accessible"
   fi
 }
 
