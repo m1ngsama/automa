@@ -1,0 +1,42 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: automa-caddy
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+    environment:
+      - DOMAIN=${DOMAIN:-example.com}
+
+    networks:
+      - automa-proxy
+
+    labels:
+      - "com.automa.service=caddy"
+      - "com.centurylinklabs.watchtower.enable=true"
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2019/config/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  caddy_data:
+    name: automa_caddy_data
+  caddy_config:
+    name: automa_caddy_config
+
+networks:
+  automa-proxy:
+    name: automa-proxy
+    external: true

@@ -1,0 +1,26 @@
+services:
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: automa-fail2ban
+    restart: unless-stopped
+
+    network_mode: host
+
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+      - F2B_LOG_LEVEL=INFO
+
+    volumes:
+      - fail2ban_data:/data
+      - /var/log:/var/log:ro
+
+    labels:
+      - "com.automa.service=fail2ban"
+
+volumes:
+  fail2ban_data:
+    name: automa_fail2ban_data

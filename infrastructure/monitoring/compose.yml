@@ -1,0 +1,137 @@
+services:
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48-alpine
+    container_name: automa-prometheus
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+
+    networks:
+      - automa-monitoring
+      - automa-proxy
+
+    labels:
+      - "com.automa.service=prometheus"
+      - "com.centurylinklabs.watchtower.enable=false"
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10-alpine
+    container_name: automa-grafana
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN:-example.com}
+
+    networks:
+      - automa-monitoring
+      - automa-proxy
+
+    labels:
+      - "com.automa.service=grafana"
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:2-alpine
+    container_name: automa-loki
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3100:3100"
+
+    volumes:
+      - ./loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+
+    command: -config.file=/etc/loki/loki-config.yml
+
+    networks:
+      - automa-monitoring
+
+    labels:
+      - "com.automa.service=loki"
+
+  # Promtail - Log collection
+  promtail:
+    image: grafana/promtail:2-alpine
+    container_name: automa-promtail
+    restart: unless-stopped
+
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    command: -config.file=/etc/promtail/promtail-config.yml
+
+    networks:
+      - automa-monitoring
+
+    labels:
+      - "com.automa.service=promtail"
+
+  # cAdvisor - Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: automa-cadvisor
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+
+    privileged: true
+
+    networks:
+      - automa-monitoring
+
+    labels:
+      - "com.automa.service=cadvisor"
+
+    command:
+      - '--docker_only=true'
+      - '--housekeeping_interval=30s'
+
+volumes:
+  prometheus_data:
+    name: automa_prometheus_data
+  grafana_data:
+    name: automa_grafana_data
+  loki_data:
+    name: automa_loki_data
+
+networks:
+  automa-monitoring:
+    name: automa-monitoring
+    external: true
+  automa-proxy:
+    name: automa-proxy
+    external: true
