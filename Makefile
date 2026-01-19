@@ -4,6 +4,7 @@
 .PHONY: help all status up down logs restart clean minecraft teamspeak nextcloud
 .PHONY: health health-minecraft health-teamspeak health-nextcloud
 .PHONY: backup backup-minecraft backup-teamspeak backup-nextcloud backup-list backup-cleanup
+.PHONY: network-create network-remove infra-up infra-down infra-status
 
 # Default target
 help:
@@ -11,11 +12,22 @@ help:
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
+	@echo "Setup Commands:"
+	@echo "  network-create Create Docker networks"
+	@echo "  network-remove Remove Docker networks"
+	@echo ""
+	@echo "Infrastructure Commands:"
+	@echo "  infra-up       Start infrastructure (Caddy, Monitoring, etc.)"
+	@echo "  infra-down     Stop infrastructure"
+	@echo "  infra-status   Show infrastructure status"
+	@echo ""
 	@echo "Global Commands:"
 	@echo "  help           Show this help message"
 	@echo "  status         Show status of all services"
-	@echo "  all-up         Start all services"
-	@echo "  all-down       Stop all services"
+	@echo "  up             Start infrastructure + all services"
+	@echo "  down           Stop all services + infrastructure"
+	@echo "  all-up         Start all services only"
+	@echo "  all-down       Stop all services only"
 	@echo "  health         Run health checks on all services"
 	@echo "  backup         Backup all services"
 	@echo "  backup-list    List available backups"
@@ -211,3 +223,65 @@ backup-list:
 
 backup-cleanup:
 	@./bin/backup.sh cleanup
+
+# ============================================================================
+# Network Setup
+# ============================================================================
+network-create:
+	@echo "Creating Docker networks..."
+	@docker network create automa-proxy 2>/dev/null || echo "  automa-proxy already exists"
+	@docker network create automa-monitoring 2>/dev/null || echo "  automa-monitoring already exists"
+	@echo "✓ Networks ready"
+
+network-remove:
+	@echo "Removing Docker networks..."
+	@docker network rm automa-proxy automa-monitoring 2>/dev/null || echo "  Networks already removed"
+	@echo "✓ Networks removed"
+
+# ============================================================================
+# Infrastructure Targets
+# ============================================================================
+infra-up: network-create
+	@echo "Starting infrastructure services..."
+	@cd infrastructure/caddy && docker compose up -d
+	@cd infrastructure/monitoring && docker compose up -d
+	@cd infrastructure/watchtower && docker compose up -d
+	@cd infrastructure/duplicati && docker compose up -d
+	@cd infrastructure/fail2ban && docker compose up -d
+	@echo "✓ Infrastructure started"
+
+infra-down:
+	@echo "Stopping infrastructure services..."
+	@cd infrastructure/fail2ban && docker compose down || true
+	@cd infrastructure/duplicati && docker compose down || true
+	@cd infrastructure/watchtower && docker compose down || true
+	@cd infrastructure/monitoring && docker compose down || true
+	@cd infrastructure/caddy && docker compose down || true
+	@echo "✓ Infrastructure stopped"
+
+infra-status:
+	@echo "=== Infrastructure Status ==="
+	@echo ""
+	@echo "Caddy:"
+	@cd infrastructure/caddy && docker compose ps 2>/dev/null || echo "  Not running"
+	@echo ""
+	@echo "Monitoring:"
+	@cd infrastructure/monitoring && docker compose ps 2>/dev/null || echo "  Not running"
+	@echo ""
+	@echo "Watchtower:"
+	@cd infrastructure/watchtower && docker compose ps 2>/dev/null || echo "  Not running"
+	@echo ""
+	@echo "Duplicati:"
+	@cd infrastructure/duplicati && docker compose ps 2>/dev/null || echo "  Not running"
+	@echo ""
+	@echo "Fail2ban:"
+	@cd infrastructure/fail2ban && docker compose ps 2>/dev/null || echo "  Not running"
+
+# ============================================================================
+# Full Stack Management
+# ============================================================================
+up: infra-up all-up
+	@echo "✓ Full stack started"
+
+down: all-down infra-down
+	@echo "✓ Full stack stopped"
