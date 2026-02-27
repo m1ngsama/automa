@@ -12,15 +12,25 @@ source "$ENV_FILE"
 
 require_env SS_PORT SS_PASSWORD SS_METHOD
 
-log_info "Downloading shadowsocks-rust..."
-VERSION=$(curl -s https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
-ARCHIVE="shadowsocks-${VERSION}.x86_64-unknown-linux-gnu.tar.xz"
-wget -q "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${VERSION}/${ARCHIVE}"
-tar -xf "$ARCHIVE"
-cp ssserver /usr/local/bin/ssserver-rust
-chmod +x /usr/local/bin/ssserver-rust
-rm -f "$ARCHIVE" ssserver sslocal ssurl ssmanager redir tunnel
+SSSERVER_BIN="/usr/local/bin/ssserver-rust"
+
+if [[ -x "$SSSERVER_BIN" ]]; then
+    log_info "ssserver-rust already at $SSSERVER_BIN ($($SSSERVER_BIN --version 2>&1 | head -1)), skipping download"
+elif command -v ssserver &>/dev/null; then
+    existing="$(command -v ssserver)"
+    log_info "ssserver found at $existing, symlinking to $SSSERVER_BIN"
+    ln -sf "$existing" "$SSSERVER_BIN"
+else
+    log_info "Downloading shadowsocks-rust..."
+    VERSION=$(curl -s https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+    ARCHIVE="shadowsocks-${VERSION}.x86_64-unknown-linux-gnu.tar.xz"
+    wget -q "https://github.com/shadowsocks/shadowsocks-rust/releases/download/${VERSION}/${ARCHIVE}"
+    tar -xf "$ARCHIVE"
+    cp ssserver "$SSSERVER_BIN"
+    chmod +x "$SSSERVER_BIN"
+    rm -f "$ARCHIVE" ssserver sslocal ssurl ssmanager redir tunnel
+fi
 
 log_info "Deploying config..."
 mkdir -p /etc/shadowsocks-rust
