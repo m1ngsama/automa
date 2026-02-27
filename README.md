@@ -1,6 +1,27 @@
 # Automa
 
-A collection of self-hosted service automation tools following the Unix philosophy: do one thing well, be composable, and stay simple.
+Deployment scripts for self-hosted infrastructure. Pairs with [infra](https://github.com/m1ngsama/infra) (private) for configuration.
+
+```
+infra/services/<name>/.env  →  automa/services/<name>/deploy.sh
+```
+
+## Relationship with infra
+
+**infra** (private) holds config templates and `.env.example` files — the "what" and "how to configure".
+**automa** (public) holds deployment scripts — the "how to deploy". Zero hardcoded values, zero domain names.
+
+Workflow:
+1. Clone infra (private), fill in `.env` files for each service you want
+2. Clone automa (public), run the matching deploy script
+3. Each script reads `INFRA_DIR` to locate the corresponding `.env`
+
+```bash
+# Example
+cd infra/services/email && cp .env.example .env && $EDITOR .env
+cd automa/services/email
+INFRA_DIR=../../infra/services/email ./deploy.sh
+```
 
 ## Philosophy
 
@@ -10,7 +31,49 @@ This project embraces Unix principles:
 - **Composability**: Tools work together through standard interfaces
 - **Transparency**: Plain text configuration, readable scripts
 
-## Services
+## Infrastructure Services
+
+System services deployed from infra module configs.
+
+### Email
+Postfix + Dovecot + OpenDKIM + SpamAssassin.
+
+```bash
+INFRA_DIR=/path/to/infra/services/email ./services/email/deploy.sh
+```
+
+### Nginx
+Web server and reverse proxy vhosts.
+
+```bash
+INFRA_DIR=/path/to/infra/services/nginx ./services/nginx/deploy.sh
+```
+
+### Shadowsocks
+GFW-resistant proxy.
+
+```bash
+# Server (VPS)
+INFRA_DIR=/path/to/infra/services/shadowsocks/server ./services/shadowsocks/server/deploy.sh
+
+# Client (home machine)
+INFRA_DIR=/path/to/infra/services/shadowsocks/client ./services/shadowsocks/client/deploy.sh
+```
+
+### FRP
+Reverse tunnel — expose home services through VPS.
+
+```bash
+# Server (VPS)
+INFRA_DIR=/path/to/infra/services/frp/server ./services/frp/server/deploy.sh
+
+# Client (home machine)
+INFRA_DIR=/path/to/infra/services/frp/client ./services/frp/client/deploy.sh
+```
+
+## Home Services
+
+Docker-based services with their own config.
 
 ### Minecraft Server
 Automated Minecraft Fabric server deployment with mod management.
@@ -72,12 +135,21 @@ Batch clone all repositories from a GitHub organization.
 
 ```
 automa/
-├── bin/                  # Utility scripts
-│   └── org-clone.sh     # GitHub org repo cloner
-├── minecraft/           # Minecraft server setup
-├── teamspeak/           # TeamSpeak server setup
-├── nextcloud/           # Nextcloud setup
-└── README.md           # This file
+├── bin/                        # Utility scripts
+│   └── lib/common.sh          # Shared logging + env helpers
+├── services/                   # Infrastructure deploy scripts (reads infra .env)
+│   ├── email/deploy.sh
+│   ├── nginx/deploy.sh
+│   ├── shadowsocks/
+│   │   ├── server/deploy.sh
+│   │   └── client/deploy.sh
+│   └── frp/
+│       ├── server/deploy.sh
+│       └── client/deploy.sh
+├── minecraft/                  # Minecraft server (Docker)
+├── teamspeak/                  # TeamSpeak server (Docker)
+├── nextcloud/                  # Nextcloud (Docker)
+└── README.md
 ```
 
 ## Common Operations
