@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/../../bin/lib/common.sh"
 
 ENV_FILE="${INFRA_DIR:-.}/.env"
 [ -f "$ENV_FILE" ] || { log_error "No .env found at $ENV_FILE"; exit 1; }
-source "$ENV_FILE"
+set -a; source "$ENV_FILE"; set +a
 
 require_env DOMAIN MAIL_HOST MAIL_USER
 
