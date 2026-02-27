@@ -4,6 +4,7 @@
 .PHONY: help all status up down logs restart clean minecraft teamspeak nextcloud
 .PHONY: health health-minecraft health-teamspeak health-nextcloud
 .PHONY: backup backup-minecraft backup-teamspeak backup-nextcloud backup-list backup-cleanup
+.PHONY: deploy-email deploy-nginx deploy-ss-server deploy-ss-client deploy-frp-server deploy-frp-client
 
 # Default target
 help:
@@ -20,6 +21,14 @@ help:
 	@echo "  backup         Backup all services"
 	@echo "  backup-list    List available backups"
 	@echo "  backup-cleanup Remove old backups"
+	@echo ""
+	@echo "Infrastructure Deploy (set INFRA_DIR first):"
+	@echo "  deploy-email       Deploy Postfix+Dovecot+OpenDKIM+SpamAssassin"
+	@echo "  deploy-nginx       Deploy Nginx vhosts"
+	@echo "  deploy-ss-server   Deploy Shadowsocks server"
+	@echo "  deploy-ss-client   Deploy Shadowsocks client + privoxy"
+	@echo "  deploy-frp-server  Deploy FRP server (frps)"
+	@echo "  deploy-frp-client  Deploy FRP client (frpc)"
 	@echo ""
 	@echo "Service-specific Commands:"
 	@echo "  Minecraft:"
@@ -54,6 +63,36 @@ help:
 	@echo "Utility Commands:"
 	@echo "  check      Check prerequisites"
 	@echo "  clean      Remove stopped containers and unused volumes"
+
+# ============================================================================
+# Infrastructure Service Targets
+# Requires INFRA_DIR pointing to the corresponding infra module directory.
+# ============================================================================
+
+# deploy-email: INFRA_DIR=/path/to/infra/services/email make deploy-email
+deploy-email:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/email"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/email/deploy.sh
+
+deploy-nginx:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/nginx"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/nginx/deploy.sh
+
+deploy-ss-server:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/shadowsocks/server"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/shadowsocks/server/deploy.sh
+
+deploy-ss-client:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/shadowsocks/client"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/shadowsocks/client/deploy.sh
+
+deploy-frp-server:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/frp/server"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/frp/server/deploy.sh
+
+deploy-frp-client:
+	@[ -n "$(INFRA_DIR)" ] || { echo "Set INFRA_DIR=/path/to/infra/services/frp/client"; exit 1; }
+	INFRA_DIR=$(INFRA_DIR) ./services/frp/client/deploy.sh
 
 # Check prerequisites
 check:
