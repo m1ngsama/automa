@@ -12,6 +12,18 @@ source "$ENV_FILE"
 
 require_env SS_PORT SS_PASSWORD SS_METHOD
 
+find_template() {
+    local f="$1"
+    if [[ -n "${INFRA_DIR:-}" && -f "${INFRA_DIR}/$f" ]]; then
+        echo "${INFRA_DIR}/$f"
+    elif [[ -f "$SCRIPT_DIR/$f" ]]; then
+        echo "$SCRIPT_DIR/$f"
+    else
+        log_error "Template not found: $f"
+        return 1
+    fi
+}
+
 SSSERVER_BIN="/usr/local/bin/ssserver-rust"
 
 if [[ -x "$SSSERVER_BIN" ]]; then
@@ -34,10 +46,10 @@ fi
 
 log_info "Deploying config..."
 mkdir -p /etc/shadowsocks-rust
-envsubst < "${INFRA_DIR}/config.json.example" > /etc/shadowsocks-rust/config.json
+envsubst < "$(find_template config.json.example)" > /etc/shadowsocks-rust/config.json
 
 log_info "Installing service..."
-cp "${INFRA_DIR}/shadowsocks-rust.service" /etc/systemd/system/
+cp "$(find_template shadowsocks-rust.service)" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now shadowsocks-rust
 
