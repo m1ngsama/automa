@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/../../../bin/lib/common.sh"
 
 ENV_FILE="${INFRA_DIR:-.}/.env"
 [ -f "$ENV_FILE" ] || { log_error "No .env found at $ENV_FILE"; exit 1; }
-source "$ENV_FILE"
+set -a; source "$ENV_FILE"; set +a
 
 require_env FRP_SERVER_ADDR FRP_SERVER_PORT FRP_TOKEN
 
