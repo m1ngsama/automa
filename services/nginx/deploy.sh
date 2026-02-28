@@ -23,7 +23,7 @@ mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
 
 for conf in "${INFRA_DIR}/sites/"*.conf; do
     name="$(basename "$conf" .conf)"
-    envsubst < "$conf" > "/etc/nginx/sites-available/${name}"
+    envsubst '${DOMAIN}${BLOG_DOMAIN}${CHAN_DOMAIN}${MAIL_DOMAIN}${GIT_DOMAIN}' < "$conf" > "/etc/nginx/sites-available/${name}"
     ln -sf "/etc/nginx/sites-available/${name}" "/etc/nginx/sites-enabled/${name}"
     log_info "  Deployed ${name}"
 done
