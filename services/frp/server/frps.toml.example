@@ -6,7 +6,7 @@ vhostHTTPSPort = 8443
 
 webServer.addr = "127.0.0.1"
 webServer.port = 7500
-webServer.user = "root"
+webServer.user = "${FRP_WEB_USER}"
 webServer.password = "${FRP_WEB_PASSWORD}"
 
 log.to = "./frps.log"
