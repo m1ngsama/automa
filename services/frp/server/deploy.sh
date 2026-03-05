@@ -10,7 +10,7 @@ ENV_FILE="${INFRA_DIR:-.}/.env"
 [ -f "$ENV_FILE" ] || { log_error "No .env found at $ENV_FILE"; exit 1; }
 set -a; source "$ENV_FILE"; set +a
 
-require_env FRP_TOKEN FRP_WEB_PASSWORD FRP_BIND_PORT
+require_env FRP_TOKEN FRP_WEB_USER FRP_WEB_PASSWORD FRP_BIND_PORT
 
 find_template() {
     local f="$1"

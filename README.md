@@ -50,7 +50,7 @@ INFRA_DIR=/path/to/infra/services/nginx ./services/nginx/deploy.sh
 ```
 
 ### Shadowsocks
-GFW-resistant proxy.
+GFW-resistant proxy (legacy; new deployments should use sing-box).
 
 ```bash
 # Server (VPS)
@@ -58,6 +58,18 @@ INFRA_DIR=/path/to/infra/services/shadowsocks/server ./services/shadowsocks/serv
 
 # Client (home machine)
 INFRA_DIR=/path/to/infra/services/shadowsocks/client ./services/shadowsocks/client/deploy.sh
+```
+
+### Sing-box
+Multi-protocol proxy (VLESS/Reality, VMess/WS, Hysteria2). Config generated once
+by [sing-box-yg](https://github.com/yonggekkk/sing-box-yg), then stored in infra.
+
+```bash
+# Server (VPS)
+INFRA_DIR=/path/to/infra/services/sing-box/server ./services/sing-box/server/deploy.sh
+
+# Client (home machine)
+INFRA_DIR=/path/to/infra/services/sing-box/client ./services/sing-box/client/deploy.sh
 ```
 
 ### FRP
@@ -69,6 +81,27 @@ INFRA_DIR=/path/to/infra/services/frp/server ./services/frp/server/deploy.sh
 
 # Client (home machine)
 INFRA_DIR=/path/to/infra/services/frp/client ./services/frp/client/deploy.sh
+```
+
+### TNT
+SSH-based terminal chat server.
+
+```bash
+INFRA_DIR=/path/to/infra/services/tnt ./services/tnt/deploy.sh
+```
+
+### MinIO
+S3-compatible object storage.
+
+```bash
+INFRA_DIR=/path/to/infra/services/minio ./services/minio/deploy.sh
+```
+
+### Galene
+WebRTC video conferencing server.
+
+```bash
+INFRA_DIR=/path/to/infra/services/galene ./services/galene/deploy.sh
 ```
 
 ## Home Services
@@ -143,9 +176,15 @@ automa/
 │   ├── shadowsocks/
 │   │   ├── server/deploy.sh
 │   │   └── client/deploy.sh
-│   └── frp/
-│       ├── server/deploy.sh
-│       └── client/deploy.sh
+│   ├── sing-box/
+│   │   ├── server/deploy.sh
+│   │   └── client/deploy.sh
+│   ├── frp/
+│   │   ├── server/deploy.sh
+│   │   └── client/deploy.sh
+│   ├── tnt/deploy.sh
+│   ├── minio/deploy.sh
+│   └── galene/deploy.sh
 ├── minecraft/                  # Minecraft server (Docker)
 ├── teamspeak/                  # TeamSpeak server (Docker)
 ├── nextcloud/                  # Nextcloud (Docker)
