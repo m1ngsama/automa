@@ -1,71 +1,56 @@
-version: "3.9"
-
 services:
   nextcloud:
     image: nextcloud:stable-apache
     container_name: nextcloud
-    restart: unless-stopped
     depends_on:
       - db
       - redis
     ports:
-      - "8080:80"
+      - "${NC_PORT:-8080}:80"
     environment:
-      - TZ=${TZ:-Asia/Shanghai}
-      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER:-admin}
-      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD:-ChangeMe123!}
-      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
-      - MYSQL_HOST=db
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-nextcloud}
-      - MYSQL_USER=${MYSQL_USER:-nextcloud}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-ChangeDb123!}
-      - REDIS_HOST=redis
-      - REDIS_HOST_PASSWORD=${REDIS_PASSWORD:-ChangeRedis123!}
+      TZ: "${TZ:-Asia/Shanghai}"
+      NEXTCLOUD_ADMIN_USER: "${NC_ADMIN_USER:-admin}"
+      NEXTCLOUD_ADMIN_PASSWORD: "${NC_ADMIN_PASSWORD}"
+      NEXTCLOUD_TRUSTED_DOMAINS: "${NC_TRUSTED_DOMAINS:-localhost}"
+      MYSQL_HOST: db
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-nextcloud}"
+      MYSQL_USER: "${MYSQL_USER:-nextcloud}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      REDIS_HOST: redis
+      REDIS_HOST_PASSWORD: "${REDIS_PASSWORD}"
     volumes:
-      - nextcloud_html:/var/www/html
-      - nextcloud_data:/var/www/html/data
-      - nextcloud_config:/var/www/html/config
-      - nextcloud_apps:/var/www/html/custom_apps
-    networks:
-      - nextcloud-network
+      - nc-html:/var/www/html
+      - nc-data:/var/www/html/data
+      - nc-config:/var/www/html/config
+      - nc-apps:/var/www/html/custom_apps
+    restart: unless-stopped
 
   db:
     image: mariadb:11
     container_name: nextcloud-db
-    restart: unless-stopped
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW --innodb_read_only_compressed=OFF
     environment:
-      - TZ=${TZ:-Asia/Shanghai}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-ChangeRoot123!}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-nextcloud}
-      - MYSQL_USER=${MYSQL_USER:-nextcloud}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-ChangeDb123!}
+      TZ: "${TZ:-Asia/Shanghai}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-nextcloud}"
+      MYSQL_USER: "${MYSQL_USER:-nextcloud}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
     volumes:
-      - nextcloud_db:/var/lib/mysql
-    networks:
-      - nextcloud-network
+      - nc-db:/var/lib/mysql
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: nextcloud-redis
-    restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-ChangeRedis123!}"]
-    environment:
-      - TZ=${TZ:-Asia/Shanghai}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-ChangeRedis123!}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
-      - nextcloud_redis:/data
-    networks:
-      - nextcloud-network
+      - nc-redis:/data
+    restart: unless-stopped
 
 volumes:
-  nextcloud_html:
-  nextcloud_data:
-  nextcloud_config:
-  nextcloud_apps:
-  nextcloud_db:
-  nextcloud_redis:
-
-networks:
-  nextcloud-network:
-    driver: bridge
+  nc-html:
+  nc-data:
+  nc-config:
+  nc-apps:
+  nc-db:
+  nc-redis:

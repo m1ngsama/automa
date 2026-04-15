@@ -3,41 +3,36 @@
 *.env
 !.env.example
 
-# Docker volumes and data
+# Runtime data
 **/data/
 **/volumes/
+**/tailscale-data/
+**/cloudreve-data/
+**/qbt-config/
+**/downloads/
 
 # Logs
 *.log
-logs/
 **/logs/
 
 # Backups
 *.tar.gz
 *.zip
-backups/
-**/backups/
 
-# OS specific
+# OS
 .DS_Store
 Thumbs.db
 *.swp
-*.swo
 *~
 
 # IDE
 .vscode/
 .idea/
-*.iml
 
 # Minecraft specific
+minecraft/mods/
 minecraft/world/
 minecraft/world_*/
 minecraft/server.jar
 minecraft/libraries/
 minecraft/.fabric/
-
-# Temporary files
-tmp/
-temp/
-*.tmp

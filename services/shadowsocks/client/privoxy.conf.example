@@ -1,5 +1,0 @@
-# Privoxy config — bridges SOCKS5 (sslocal) to HTTP proxy
-# Listens on :8118, forwards to sslocal SOCKS5 on :1080
-
-listen-address  127.0.0.1:8118
-forward-socks5t / 127.0.0.1:1080 .

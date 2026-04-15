@@ -1,0 +1,9 @@
+services:
+  webhook:
+    image: ghcr.io/nbtca/notification-center:latest
+    container_name: notification-center
+    volumes:
+      - ./data:/config
+    ports:
+      - "${NC_WEBHOOK_PORT:-18080}:8080"
+    restart: unless-stopped

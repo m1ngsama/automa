@@ -1,0 +1,29 @@
+services:
+  cloudreve:
+    image: cloudreve/cloudreve:latest
+    container_name: cloudreve
+    environment:
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - ./cloudreve-data:/cloudreve/data
+      - ${DOWNLOADS_DIR:-./downloads}:/data/downloads
+    ports:
+      - "${CLOUDREVE_PORT:-5212}:5212"
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: "${TZ:-Asia/Shanghai}"
+      WEBUI_PORT: "${QB_WEBUI_PORT:-8090}"
+    volumes:
+      - ./qbt-config:/config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
+    ports:
+      - "${QB_WEBUI_PORT:-8090}:${QB_WEBUI_PORT:-8090}"
+      - "${QB_BT_PORT:-44773}:${QB_BT_PORT:-44773}"
+      - "${QB_BT_PORT:-44773}:${QB_BT_PORT:-44773}/udp"
+    restart: unless-stopped
