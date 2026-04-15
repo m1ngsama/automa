@@ -9,6 +9,7 @@ set -euo pipefail
 
 AUTOMA_VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+YES=0  # set to 1 by -y/--yes to skip all prompts
 
 # ============================================================================
 # Terminal
@@ -208,6 +209,10 @@ configure_env() {
 
     # Handle existing .env
     if [[ -f "$env_file" ]]; then
+        if [[ $YES -eq 1 ]]; then
+            info "Keeping existing .env for ${name}"
+            return 0
+        fi
         echo ""
         dim ".env already exists for ${BOLD}${name}${NC}"
         echo ""
@@ -252,55 +257,69 @@ configure_env() {
         has_notes=1
     done < <(project_notes "$slug")
 
-    echo ""
-    divider
-    dim "Press ${BOLD}Enter${NC}${DIM} to accept [default] values${NC}"
-    echo ""
-
     local tmp_env
     tmp_env="$(mktemp)"
 
-    while IFS= read -r line; do
-        # Blank line
-        [[ -z "$line" ]] && continue
-
-        # Skip @metadata
-        [[ "$line" =~ ^#\ @(name|desc|url|port|note) ]] && continue
-
-        # Comment → show as hint
-        if [[ "$line" =~ ^#.* ]]; then
-            echo -e "     ${DIM}${line#\# }${NC}"
-            continue
-        fi
-
-        local key="${line%%=*}"
-        local default="${line#*=}"
-
-        if [[ -n "$default" ]]; then
-            read -rp "     ${BOLD}${key}${NC} [${DIM}${default}${NC}]: " val
-            echo "${key}=${val:-$default}" >> "$tmp_env"
-        else
-            # Required — check if it's a secret
-            if [[ "$key" =~ PASSWORD|SECRET|TOKEN|AUTHKEY ]]; then
-                echo -e "     ${DIM}Leave blank to auto-generate${NC}"
-                read -rp "     ${BOLD}${key}${NC}: " val
-                if [[ -z "$val" ]]; then
-                    val=$(generate_password)
-                    echo -e "     ${DIM}Generated: ${val}${NC}"
-                fi
-            else
-                while true; do
-                    read -rp "     ${BOLD}${key}${NC} ${RED}(required)${NC}: " val
-                    [[ -n "$val" ]] && break
-                    echo -e "     ${RED}This field cannot be empty${NC}"
-                done
+    if [[ $YES -eq 1 ]]; then
+        # Non-interactive: accept all defaults, generate secrets
+        while IFS= read -r line; do
+            [[ -z "$line" || "$line" =~ ^# ]] && continue
+            local key="${line%%=*}"
+            local default="${line#*=}"
+            if [[ -z "$default" && "$key" =~ PASSWORD|SECRET|TOKEN|AUTHKEY ]]; then
+                default=$(generate_password)
             fi
-            echo "${key}=${val}" >> "$tmp_env"
-        fi
-    done < "$env_example"
+            echo "${key}=${default}" >> "$tmp_env"
+        done < "$env_example"
+        info "Configuration generated for ${name}"
+    else
+        echo ""
+        divider
+        dim "Press ${BOLD}Enter${NC}${DIM} to accept [default] values${NC}"
+        echo ""
 
-    echo ""
-    divider
+        while IFS= read -r line; do
+            # Blank line
+            [[ -z "$line" ]] && continue
+
+            # Skip @metadata
+            [[ "$line" =~ ^#\ @(name|desc|url|port|note) ]] && continue
+
+            # Comment → show as hint
+            if [[ "$line" =~ ^#.* ]]; then
+                echo -e "     ${DIM}${line#\# }${NC}"
+                continue
+            fi
+
+            local key="${line%%=*}"
+            local default="${line#*=}"
+
+            if [[ -n "$default" ]]; then
+                read -rp "     ${BOLD}${key}${NC} [${DIM}${default}${NC}]: " val
+                echo "${key}=${val:-$default}" >> "$tmp_env"
+            else
+                # Required — check if it's a secret
+                if [[ "$key" =~ PASSWORD|SECRET|TOKEN|AUTHKEY ]]; then
+                    echo -e "     ${DIM}Leave blank to auto-generate${NC}"
+                    read -rp "     ${BOLD}${key}${NC}: " val
+                    if [[ -z "$val" ]]; then
+                        val=$(generate_password)
+                        echo -e "     ${DIM}Generated: ${val}${NC}"
+                    fi
+                else
+                    while true; do
+                        read -rp "     ${BOLD}${key}${NC} ${RED}(required)${NC}: " val
+                        [[ -n "$val" ]] && break
+                        echo -e "     ${RED}This field cannot be empty${NC}"
+                    done
+                fi
+                echo "${key}=${val}" >> "$tmp_env"
+            fi
+        done < "$env_example"
+
+        echo ""
+        divider
+    fi
 
     mv "$tmp_env" "$env_file"
     chmod 600 "$env_file"
@@ -410,8 +429,10 @@ cmd_deploy() {
         echo -e "     ${CYAN}\xe2\x96\xb6${NC}  ${s}  ${DIM}${desc:-}${NC}"
     done
     echo ""
-    read -rp "     Proceed? [Y/n] " confirm
-    [[ "${confirm:-y}" =~ ^[Nn] ]] && { echo ""; dim "Cancelled."; return 0; }
+    if [[ $YES -eq 0 ]]; then
+        read -rp "     Proceed? [Y/n] " confirm
+        [[ "${confirm:-y}" =~ ^[Nn] ]] && { echo ""; dim "Cancelled."; return 0; }
+    fi
 
     divider
 
@@ -610,6 +631,9 @@ cmd_help() {
   ${BOLD}Usage${NC}
     automa <command> [options]
 
+  ${BOLD}Global flags${NC}
+    ${BOLD}-y, --yes${NC}              Skip all prompts (accept defaults, auto-generate secrets)
+
   ${BOLD}Commands${NC}
     ${BOLD}deploy${NC} [project...]    Deploy projects interactively or by name
     ${BOLD}list${NC}                   List all projects and their status
@@ -624,6 +648,7 @@ cmd_help() {
   ${BOLD}Examples${NC}
     ${DIM}\$${NC} automa deploy                     ${DIM}# interactive selection${NC}
     ${DIM}\$${NC} automa deploy forgejo nextcloud    ${DIM}# deploy by name${NC}
+    ${DIM}\$${NC} automa -y deploy forgejo           ${DIM}# non-interactive (CI/scripts)${NC}
     ${DIM}\$${NC} automa status                      ${DIM}# overview dashboard${NC}
     ${DIM}\$${NC} automa logs minecraft              ${DIM}# follow logs${NC}
 
@@ -638,6 +663,16 @@ EOF
 # Main
 # ============================================================================
 main() {
+    # Parse global flags
+    while [[ "${1:-}" =~ ^- ]]; do
+        case "$1" in
+            -y|--yes) YES=1; shift ;;
+            -h|--help) cmd_help; return ;;
+            -v|--version) echo "automa v${AUTOMA_VERSION}"; return ;;
+            *) break ;;
+        esac
+    done
+
     local cmd="${1:-}"
     [[ -z "$cmd" ]] && { cmd_help; return; }
     shift
