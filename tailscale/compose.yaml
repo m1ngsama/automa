@@ -3,15 +3,13 @@ services:
     image: tailscale/tailscale:latest
     container_name: tailscale
     hostname: "${TS_HOSTNAME}"
-    volumes:
-      - ./tailscale-data:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
-      - /var/run/tailscale:/var/run/tailscale
-    privileged: true
+    profiles: ["tailscale", "derp"]
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
       - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
     network_mode: host
     environment:
       TS_AUTHKEY: "${TS_AUTHKEY}"
@@ -22,13 +20,22 @@ services:
       TS_DEBUG_FIREWALL_MODE: "${TS_FIREWALL_MODE:-nftables}"
       TS_HOSTNAME: "${TS_HOSTNAME}"
       TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - ./tailscale-data:/var/lib/tailscale
+      - /var/run/tailscale:/var/run/tailscale
+      - /lib/modules:/lib/modules:ro
     healthcheck:
-      test: ["CMD-SHELL", "tailscale status --json | grep -q '\"BackendState\": \"Running\"'"]
+      test: ["CMD-SHELL", "tailscale status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   derp-server:
     image: ghcr.io/nbtca/tailscale-derp:edge
     container_name: tailscale-derp
+    profiles: ["derp"]
     network_mode: host
     depends_on:
       tailscale:

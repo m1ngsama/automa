@@ -3,11 +3,7 @@
 #
 # Install & run:
 #   curl -fsSL https://raw.githubusercontent.com/m1ngsama/automa/main/install.sh | bash
-#   automa deploy
-#
-# Or clone and run directly:
-#   git clone https://github.com/m1ngsama/automa.git && cd automa
-#   ./automa deploy
+#   cd ~/automa && ./automa deploy
 
 set -euo pipefail
 
@@ -17,15 +13,13 @@ set -euo pipefail
 AUTOMA_VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+# Colors (disabled when not a terminal)
+if [[ -t 1 ]]; then
+    RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[1;33m'
+    CYAN='\033[0;36m' BOLD='\033[1m' DIM='\033[2m' NC='\033[0m'
+else
+    RED='' GREEN='' YELLOW='' CYAN='' BOLD='' DIM='' NC=''
+fi
 
 # ============================================================================
 # Helpers
@@ -33,7 +27,6 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[+]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
 error() { echo -e "${RED}[-]${NC} $*" >&2; }
-dim()   { echo -e "${DIM}$*${NC}"; }
 
 banner() {
     echo ""
@@ -42,90 +35,145 @@ banner() {
     echo ""
 }
 
-require_cmd() {
-    if ! command -v "$1" &>/dev/null; then
-        error "$1 is required but not installed."
-        [[ -n "${2:-}" ]] && dim "  Install: $2"
+check_docker() {
+    if ! command -v docker &>/dev/null; then
+        error "docker is required but not installed."
+        echo -e "  ${DIM}Install: https://docs.docker.com/engine/install/${NC}"
+        exit 1
+    fi
+    if ! docker compose version &>/dev/null 2>&1; then
+        error "docker compose plugin is required."
+        echo -e "  ${DIM}Install: https://docs.docker.com/compose/install/${NC}"
         exit 1
     fi
 }
 
 # ============================================================================
 # Project discovery
-# Scans for top-level dirs containing compose.yaml
 # ============================================================================
+PROJECTS=()
+
 discover_projects() {
-    local projects=()
+    PROJECTS=()
     for dir in "$SCRIPT_DIR"/*/; do
-        [[ -f "$dir/compose.yaml" ]] && projects+=("$(basename "$dir")")
+        [[ -f "$dir/compose.yaml" ]] && PROJECTS+=("$(basename "$dir")")
     done
-    echo "${projects[@]}"
+}
+
+project_exists() {
+    local name="$1"
+    [[ -f "$SCRIPT_DIR/$name/compose.yaml" ]]
+}
+
+project_dir() {
+    echo "$SCRIPT_DIR/$1"
+}
+
+# compose wrapper that auto-adds --env-file if .env exists
+compose() {
+    local name="$1"; shift
+    local dir="$SCRIPT_DIR/$name"
+    local args=(-f "$dir/compose.yaml")
+
+    if [[ -f "$dir/.env" ]]; then
+        args+=(--env-file "$dir/.env")
+    fi
+
+    docker compose "${args[@]}" "$@"
 }
 
 # ============================================================================
 # Interactive .env configuration
-# Reads .env.example, prompts user for each value, writes .env
 # ============================================================================
 configure_env() {
-    local project_dir="$1"
-    local env_example="$project_dir/.env.example"
-    local env_file="$project_dir/.env"
+    local name="$1"
+    local dir="$SCRIPT_DIR/$name"
+    local env_example="$dir/.env.example"
+    local env_file="$dir/.env"
 
     if [[ ! -f "$env_example" ]]; then
         warn "No .env.example found, skipping configuration"
         return 0
     fi
 
+    # If .env already exists, ask what to do
     if [[ -f "$env_file" ]]; then
         echo ""
-        echo -e "  ${YELLOW}.env already exists.${NC}"
-        echo -e "  ${DIM}[k]eep  [r]econfigure  [v]iew${NC}"
+        echo -e "  ${YELLOW}.env already exists for ${BOLD}${name}${NC}"
+        echo -e "  ${DIM}[k]eep current  [r]econfigure  [v]iew${NC}"
         while true; do
             read -rp "  > " choice
-            case "$choice" in
+            case "${choice,,}" in
                 k|keep|"") info "Keeping existing .env"; return 0 ;;
                 r|reconfigure) break ;;
                 v|view)
                     echo ""
                     while IFS= read -r line; do
-                        echo -e "  ${DIM}${line}${NC}"
+                        echo -e "    ${DIM}${line}${NC}"
                     done < "$env_file"
                     echo ""
                     echo -e "  ${DIM}[k]eep  [r]econfigure${NC}"
                     ;;
-                *) echo -e "  ${DIM}k/r/v${NC}" ;;
+                *) echo -e "  ${DIM}Enter k, r, or v${NC}" ;;
             esac
         done
     fi
 
     echo ""
-    info "Configure ${BOLD}$(basename "$project_dir")${NC}"
-    dim "  Enter values (blank = use default shown in brackets)"
+    echo -e "  ${BOLD}Configure: ${CYAN}${name}${NC}"
+    echo ""
+
+    # Show header comments from .env.example
+    while IFS= read -r line; do
+        [[ "$line" =~ ^#.* ]] && echo -e "  ${DIM}${line}${NC}" || break
+    done < "$env_example"
+    echo ""
+    echo -e "  ${DIM}Enter values (blank = accept default in brackets)${NC}"
     echo ""
 
     local tmp_env
     tmp_env="$(mktemp)"
+    local pending_comment=""
 
     while IFS= read -r line; do
-        # Skip comments and empty lines
-        [[ "$line" =~ ^#.* ]] && continue
-        [[ -z "$line" ]] && continue
+        # Blank line
+        if [[ -z "$line" ]]; then
+            [[ -n "$pending_comment" ]] && { echo "" ; pending_comment=""; }
+            continue
+        fi
+
+        # Comment line — show as hint for next variable
+        if [[ "$line" =~ ^#.* ]]; then
+            echo -e "  ${DIM}${line}${NC}"
+            pending_comment="$line"
+            continue
+        fi
 
         local key="${line%%=*}"
         local default="${line#*=}"
+        pending_comment=""
 
+        local val
         if [[ -n "$default" ]]; then
             read -rp "  ${key} [${default}]: " val
             echo "${key}=${val:-$default}" >> "$tmp_env"
         else
-            read -rp "  ${key}: " val
+            # Required field — no default
+            while true; do
+                read -rp "  ${key} (required): " val
+                if [[ -n "$val" ]]; then
+                    break
+                fi
+                echo -e "  ${RED}This field cannot be empty${NC}"
+            done
             echo "${key}=${val}" >> "$tmp_env"
         fi
     done < "$env_example"
 
     mv "$tmp_env" "$env_file"
     chmod 600 "$env_file"
-    info ".env written"
+    echo ""
+    info ".env saved (chmod 600)"
 }
 
 # ============================================================================
@@ -134,25 +182,24 @@ configure_env() {
 
 cmd_list() {
     banner
-    local projects
-    read -ra projects <<< "$(discover_projects)"
+    discover_projects
 
-    if [[ ${#projects[@]} -eq 0 ]]; then
+    if [[ ${#PROJECTS[@]} -eq 0 ]]; then
         warn "No projects found"
         return 1
     fi
 
     echo -e "  ${BOLD}Available projects:${NC}"
     echo ""
+
     local i=1
-    for p in "${projects[@]}"; do
-        local status="${DIM}not deployed${NC}"
+    for p in "${PROJECTS[@]}"; do
+        local status="${DIM}not configured${NC}"
         if [[ -f "$SCRIPT_DIR/$p/.env" ]]; then
-            # Check if compose is running
-            if docker compose -f "$SCRIPT_DIR/$p/compose.yaml" ps --status running 2>/dev/null | grep -q .; then
+            if compose "$p" ps --status running 2>/dev/null | grep -q .; then
                 status="${GREEN}running${NC}"
             else
-                status="${YELLOW}configured${NC}"
+                status="${YELLOW}stopped${NC}"
             fi
         fi
         printf "  ${BOLD}%2d${NC}  %-24s %b\n" "$i" "$p" "$status"
@@ -163,13 +210,10 @@ cmd_list() {
 
 cmd_deploy() {
     banner
-    require_cmd docker "https://docs.docker.com/engine/install/"
-    require_cmd "docker compose" || require_cmd docker-compose
+    check_docker
+    discover_projects
 
-    local projects
-    read -ra projects <<< "$(discover_projects)"
-
-    if [[ ${#projects[@]} -eq 0 ]]; then
+    if [[ ${#PROJECTS[@]} -eq 0 ]]; then
         error "No projects found"
         return 1
     fi
@@ -186,36 +230,35 @@ cmd_deploy() {
     echo -e "  ${BOLD}Select projects to deploy:${NC}"
     echo ""
     local i=1
-    for p in "${projects[@]}"; do
+    for p in "${PROJECTS[@]}"; do
         printf "  ${BOLD}%2d${NC}  %s\n" "$i" "$p"
         ((i++))
     done
     echo ""
-    echo -e "  ${DIM}Enter numbers (space-separated), 'all', or 'q' to quit${NC}"
+    echo -e "  ${DIM}Enter numbers (space-separated), or 'q' to quit${NC}"
     read -rp "  > " selection
 
-    [[ "$selection" == "q" ]] && return 0
+    [[ "$selection" == "q" || -z "$selection" ]] && return 0
 
     local selected=()
-    if [[ "$selection" == "all" || -z "$selection" ]]; then
-        selected=("${projects[@]}")
+    if [[ "$selection" == "all" ]]; then
+        selected=("${PROJECTS[@]}")
     else
         for num in $selection; do
-            if [[ "$num" =~ ^[0-9]+$ ]] && ((num > 0 && num <= ${#projects[@]})); then
-                selected+=("${projects[$((num-1))]}")
+            if [[ "$num" =~ ^[0-9]+$ ]] && ((num > 0 && num <= ${#PROJECTS[@]})); then
+                selected+=("${PROJECTS[$((num-1))]}")
             else
-                warn "Invalid selection: $num"
+                warn "Invalid: $num (skipped)"
             fi
         done
     fi
 
     if [[ ${#selected[@]} -eq 0 ]]; then
-        error "No projects selected"
-        return 1
+        return 0
     fi
 
     echo ""
-    info "Deploying: ${selected[*]}"
+    info "Will deploy: ${selected[*]}"
     echo ""
 
     local ok=0 fail=0
@@ -225,76 +268,78 @@ cmd_deploy() {
         else
             ((fail++))
         fi
+        echo ""
     done
 
-    echo ""
-    echo -e "  ${BOLD}Summary${NC}"
-    [[ $ok -gt 0 ]] && info "Deployed: $ok"
-    [[ $fail -gt 0 ]] && error "Failed: $fail"
+    echo -e "  ${BOLD}Done.${NC} ${GREEN}${ok} deployed${NC}" \
+         "$( ((fail > 0)) && echo -e ", ${RED}${fail} failed${NC}" )"
 }
 
 deploy_project() {
     local name="$1"
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
     echo -e "  ${CYAN}── ${BOLD}${name}${NC} ${CYAN}──${NC}"
 
-    configure_env "$project_dir"
+    configure_env "$name"
+
+    if [[ ! -f "$SCRIPT_DIR/$name/.env" ]]; then
+        error "No .env file — run: automa config $name"
+        return 1
+    fi
 
     info "Starting containers..."
-    if docker compose -f "$project_dir/compose.yaml" --env-file "$project_dir/.env" up -d 2>&1; then
-        info "${name} deployed"
+    if compose "$name" up -d 2>&1; then
+        info "${name} is up"
         return 0
     else
-        error "${name} deployment failed"
+        error "${name} failed to start"
         return 1
     fi
 }
 
 cmd_stop() {
     local name="${1:?Usage: automa stop <project>}"
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
     info "Stopping ${name}..."
-    docker compose -f "$project_dir/compose.yaml" down
+    compose "$name" down
     info "${name} stopped"
 }
 
 cmd_logs() {
     local name="${1:?Usage: automa logs <project>}"
     shift
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
-    docker compose -f "$project_dir/compose.yaml" logs -f "$@"
+    compose "$name" logs -f "$@"
 }
 
 cmd_status() {
     banner
-    local projects
-    read -ra projects <<< "$(discover_projects)"
+    check_docker
+    discover_projects
 
-    for p in "${projects[@]}"; do
-        local dir="$SCRIPT_DIR/$p"
+    for p in "${PROJECTS[@]}"; do
         echo -e "  ${BOLD}${p}${NC}"
-        if docker compose -f "$dir/compose.yaml" ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null | tail -n +2 | grep -q .; then
-            docker compose -f "$dir/compose.yaml" ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null | tail -n +2 | while IFS= read -r line; do
+        local output
+        output=$(compose "$p" ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null | tail -n +2) || true
+        if [[ -n "$output" ]]; then
+            while IFS= read -r line; do
                 echo -e "    ${line}"
-            done
+            done <<< "$output"
         else
             echo -e "    ${DIM}not running${NC}"
         fi
@@ -304,43 +349,40 @@ cmd_status() {
 
 cmd_restart() {
     local name="${1:?Usage: automa restart <project>}"
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
     info "Restarting ${name}..."
-    docker compose -f "$project_dir/compose.yaml" restart
+    compose "$name" restart
     info "${name} restarted"
 }
 
 cmd_config() {
     local name="${1:?Usage: automa config <project>}"
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
-    configure_env "$project_dir"
+    configure_env "$name"
 }
 
 cmd_update() {
     local name="${1:?Usage: automa update <project>}"
-    local project_dir="$SCRIPT_DIR/$name"
 
-    if [[ ! -f "$project_dir/compose.yaml" ]]; then
+    if ! project_exists "$name"; then
         error "Project not found: $name"
         return 1
     fi
 
     info "Pulling latest images for ${name}..."
-    docker compose -f "$project_dir/compose.yaml" pull
+    compose "$name" pull
     info "Recreating containers..."
-    docker compose -f "$project_dir/compose.yaml" --env-file "$project_dir/.env" up -d
+    compose "$name" up -d
     info "${name} updated"
 }
 
@@ -351,25 +393,25 @@ cmd_help() {
 
   ${BOLD}Commands:${NC}
     deploy [project...]   Interactive deploy (or specify project names)
-    list                  List all available projects
-    status                Show running status of all projects
-    stop <project>        Stop a project
+    list                  List all available projects and status
+    status                Show running containers per project
+    stop <project>        Stop a project (docker compose down)
     restart <project>     Restart a project
     logs <project>        Follow logs of a project
-    config <project>      Configure .env for a project
+    config <project>      (Re)configure .env for a project
     update <project>      Pull latest images and recreate
     help                  Show this help
 
   ${BOLD}Examples:${NC}
     automa deploy                    # interactive project selection
-    automa deploy forgejo monitoring # deploy specific projects
+    automa deploy forgejo filesuite  # deploy specific projects
     automa status                    # check all project status
     automa logs forgejo              # follow forgejo logs
-    automa update monitoring         # pull & restart monitoring
+    automa update nextcloud          # pull & restart nextcloud
 
   ${BOLD}Quick start:${NC}
     curl -fsSL https://raw.githubusercontent.com/m1ngsama/automa/main/install.sh | bash
-    cd automa && ./automa deploy
+    cd ~/automa && ./automa deploy
 
 EOF
 }

@@ -17,8 +17,12 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     volumes:
       - ./data:/data
-      - ./mods:/data/mods
-      - ./configs:/configs:ro
+    healthcheck:
+      test: mc-health
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     restart: unless-stopped
     tty: true
     stdin_open: true

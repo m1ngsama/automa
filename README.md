@@ -14,11 +14,11 @@ cd ~/automa
 
 ```bash
 ./automa deploy                      # interactive project selection
-./automa deploy forgejo monitoring   # deploy specific projects
+./automa deploy forgejo filesuite    # deploy specific projects
 ./automa status                      # check all project status
 ./automa logs forgejo                # follow logs
 ./automa stop forgejo                # stop a project
-./automa update monitoring           # pull latest images & recreate
+./automa update nextcloud            # pull latest images & recreate
 ./automa config tailscale            # reconfigure .env
 ./automa list                        # list available projects
 ```
@@ -29,15 +29,11 @@ cd ~/automa
 |---------|-------------|
 | `forgejo` | Self-hosted Git (Gitea fork) |
 | `uptime-kuma` | Uptime monitoring dashboard |
-| `tailscale` | Tailscale client + DERP relay server |
-| `monitoring` | Prometheus + Grafana + Blackbox + Node Exporter |
+| `tailscale` | Tailscale client + DERP relay server (profiles) |
 | `filesuite` | Cloudreve cloud storage + qBittorrent |
 | `minecraft` | Fabric Minecraft server |
 | `teamspeak` | TeamSpeak voice server |
 | `nextcloud` | Nextcloud with MariaDB + Redis |
-| `huajibot` | HuaJi Bot |
-| `dockge` | Docker Compose stack manager |
-| `notification-center` | Webhook notification service |
 
 ## Structure
 
@@ -46,7 +42,7 @@ Each project is a self-contained directory:
 ```
 project-name/
 ├── compose.yaml      # Docker Compose definition
-├── .env.example      # Template with default values
+├── .env.example      # Template — comments shown during setup
 └── .env              # Your config (gitignored, created by CLI)
 ```
 

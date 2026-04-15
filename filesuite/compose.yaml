@@ -4,11 +4,18 @@ services:
     container_name: cloudreve
     environment:
       TZ: "${TZ:-Asia/Shanghai}"
+      CR_ENABLE_ARIA2: "${CR_ENABLE_ARIA2:-0}"
     volumes:
       - ./cloudreve-data:/cloudreve/data
       - ${DOWNLOADS_DIR:-./downloads}:/data/downloads
     ports:
       - "${CLOUDREVE_PORT:-5212}:5212"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fSs http://localhost:5212/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
   qbittorrent:
@@ -26,4 +33,10 @@ services:
       - "${QB_WEBUI_PORT:-8090}:${QB_WEBUI_PORT:-8090}"
       - "${QB_BT_PORT:-44773}:${QB_BT_PORT:-44773}"
       - "${QB_BT_PORT:-44773}:${QB_BT_PORT:-44773}/udp"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fSs http://localhost:${QB_WEBUI_PORT:-8090}/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
