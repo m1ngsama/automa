@@ -1,0 +1,25 @@
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: forgejo
+    environment:
+      USER_UID: "${FORGEJO_UID:-1000}"
+      USER_GID: "${FORGEJO_GID:-1000}"
+      FORGEJO__server__ROOT_URL: "${FORGEJO_ROOT_URL:-http://localhost:3000}"
+      FORGEJO__server__SSH_PORT: "${FORGEJO_SSH_PORT:-2223}"
+      FORGEJO__server__LFS_START_SERVER: "true"
+      FORGEJO__database__SQLITE_JOURNAL_MODE: "WAL"
+    ports:
+      - "${FORGEJO_HTTP_PORT:-3000}:3000"
+      - "${FORGEJO_SSH_PORT:-2223}:22"
+    volumes:
+      - ./data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped

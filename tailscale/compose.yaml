@@ -1,0 +1,52 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: "${TS_HOSTNAME}"
+    profiles: ["tailscale", "derp"]
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    network_mode: host
+    environment:
+      TS_AUTHKEY: "${TS_AUTHKEY}"
+      TS_EXTRA_ARGS: "${TS_EXTRA_ARGS:---advertise-tags=tag:container}"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SOCKET: /var/run/tailscale/tailscaled.sock
+      TS_USERSPACE: "${TS_USERSPACE:-false}"
+      TS_DEBUG_FIREWALL_MODE: "${TS_FIREWALL_MODE:-nftables}"
+      TS_HOSTNAME: "${TS_HOSTNAME}"
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - ./tailscale-data:/var/lib/tailscale
+      - /var/run/tailscale:/var/run/tailscale
+      - /lib/modules:/lib/modules:ro
+    healthcheck:
+      test: ["CMD-SHELL", "tailscale status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  derp-server:
+    image: ghcr.io/nbtca/tailscale-derp:edge
+    container_name: tailscale-derp
+    profiles: ["derp"]
+    network_mode: host
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    environment:
+      TZ: "${TZ:-Asia/Shanghai}"
+      DERP_HOST: "${DERP_HOST}"
+      DERP_PORT: "${DERP_PORT:-443}"
+      STUN_PORT: "${STUN_PORT:-3478}"
+      HTTP_PORT: "-1"
+      VERIFY_CLIENTS: "true"
+    volumes:
+      - /var/run/tailscale:/var/run/tailscale
+    restart: unless-stopped
