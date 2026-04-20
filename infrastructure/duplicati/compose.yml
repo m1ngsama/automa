@@ -1,0 +1,33 @@
+services:
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    container_name: automa-duplicati
+    restart: unless-stopped
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Asia/Shanghai}
+
+    volumes:
+      - duplicati_config:/config
+      - ../../backups:/source:ro  # Read-only access to local backups
+
+    ports:
+      - "127.0.0.1:8200:8200"  # Only accessible locally
+
+    labels:
+      - "com.automa.service=duplicati"
+      - "com.centurylinklabs.watchtower.enable=true"
+
+volumes:
+  duplicati_config:
+    name: automa_duplicati_config
+
+# Setup:
+# 1. Open http://localhost:8200
+# 2. Add backup job
+# 3. Source: /source (local backups)
+# 4. Destination: S3/SFTP/WebDAV/etc
+# 5. Schedule: Daily at 3 AM
+# 6. Retention: Keep 30 days

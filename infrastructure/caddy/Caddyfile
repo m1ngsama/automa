@@ -1,0 +1,39 @@
+# Global options
+{
+    # ACME email for Let's Encrypt
+    email admin@{$DOMAIN}
+
+    # Disable admin API in production
+    admin off
+}
+
+# Nextcloud
+cloud.{$DOMAIN} {
+    reverse_proxy nextcloud:80 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+
+    encode gzip
+
+    # Security headers
+    header Strict-Transport-Security "max-age=31536000;"
+    header X-Content-Type-Options "nosniff"
+    header X-Frame-Options "SAMEORIGIN"
+}
+
+# Grafana (monitoring dashboard)
+grafana.{$DOMAIN} {
+    reverse_proxy grafana:3000
+    encode gzip
+}
+
+# Health check endpoint (no SSL)
+http://health.{$DOMAIN} {
+    respond "OK" 200
+}
+
+# Default catch-all
+{$DOMAIN} {
+    respond "Automa Services" 404
+}
